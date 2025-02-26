@@ -2,7 +2,7 @@ name: Run Lunch Bot
 
 on:
   schedule:
-    - cron: '15 2 * * 1-5'
+    - cron: '15 1 * * 1-5'  # 매주 월~금 UTC 01:15 (KST 10:15)
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Lunch Bot
+      - name: Run Lunch Bot Script
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
