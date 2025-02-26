@@ -11,12 +11,20 @@ SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL", "#lunch-recommendations")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
 
 # --- Google 스프레드시트 설정 ---
+# "웹에 게시"한 CSV 링크 (예: https://docs.google.com/spreadsheets/d/e/XXXXXXXXXXXX/pub?output=csv)
 SPREADSHEET_CSV_URL = os.environ.get("SPREADSHEET_CSV_URL")
 
 def get_restaurant_recommendations():
     """
     공개된 CSV 링크에서 데이터를 가져와 파싱한 후,
     맛집 리스트 중 무작위로 5~6곳을 추천합니다.
+    CSV 파일은 다음 열을 포함해야 합니다:
+      - 가게 이름
+      - 종류
+      - 대표 메뉴
+      - 평점
+      - 가격대
+      - 메모
     """
     response = requests.get(SPREADSHEET_CSV_URL)
     if response.status_code != 200:
@@ -24,7 +32,14 @@ def get_restaurant_recommendations():
         return []
     content = response.content.decode('utf-8')
     reader = csv.DictReader(content.splitlines())
-    records = list(reader)
+    records = []
+    for row in reader:
+        # 각 키를 strip() 처리하여 BOM이나 불필요한 공백 제거
+        rec = {k.strip(): v for k, v in row.items()}
+        records.append(rec)
+    if not records:
+        print("CSV 파일에 데이터가 없습니다.")
+        return []
     count = random.choice([5, 6])
     recommendations = random.sample(records, min(len(records), count))
     return recommendations
@@ -35,10 +50,21 @@ def create_slack_message(recommendations):
     """
     message = "*오늘의 점심 추천 목록:*\n"
     for rec in recommendations:
-        message += f":fork_and_knife: *{rec['가게 이름']}* ({rec['종류']})\n"
-        message += f"대표 메뉴: {rec['대표 메뉴']} | 평점: {rec['평점']} | 가격대: {rec['가격대']}\n"
-        if rec['메모']:
-            message += f"메모: {rec['메모']}\n"
+        try:
+            store_name = rec["가게 이름"]
+            store_type = rec["종류"]
+            menu = rec["대표 메뉴"]
+            rating = rec["평점"]
+            price = rec["가격대"]
+            memo = rec["메모"]
+        except KeyError as e:
+            print(f"CSV 행에 필요한 키가 없습니다: {e}")
+            continue
+
+        message += f":fork_and_knife: *{store_name}* ({store_type})\n"
+        message += f"대표 메뉴: {menu} | 평점: {rating} | 가격대: {price}\n"
+        if memo:
+            message += f"메모: {memo}\n"
         message += "\n"
     message += "점심시간이다! 오늘도 맛있는 한 끼로 기분 UP! :smile:"
     return message
