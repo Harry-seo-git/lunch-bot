@@ -1,4 +1,7 @@
-name: Run Lunch Bot
+name: Install Dependencies
+  run: |
+    pip install --upgrade pip
+    pip install -r requirements.txt
 
 on:
   schedule:
