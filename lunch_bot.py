@@ -10,6 +10,7 @@ SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
 
 # --- Google 스프레드시트 설정 ---
+# SPREADSHEET_CSV_URL: 스프레드시트를 '웹에 게시'하여 얻은 CSV 링크
 SPREADSHEET_CSV_URL = os.environ.get("SPREADSHEET_CSV_URL")
 
 def get_restaurant_recommendations():
@@ -24,6 +25,7 @@ def get_restaurant_recommendations():
       - 대표 메뉴
       - 평점
       - 가격대
+      - 소요시간(거리)
       - 메모
     """
     response = requests.get(SPREADSHEET_CSV_URL)
@@ -34,13 +36,13 @@ def get_restaurant_recommendations():
     reader = csv.DictReader(content.splitlines())
     records = []
     for row in reader:
-        # 각 키를 strip() 처리하여 BOM이나 불필요한 공백 제거
+        # 각 키와 값을 strip() 처리하여 BOM이나 불필요한 공백 제거
         rec = {k.strip(): v.strip() for k, v in row.items()}
         try:
             rating = float(rec.get("평점", "0"))
         except ValueError:
             rating = 0
-        # 평점이 2 초과인 경우에만 포함
+        # 평점이 2 초과인 항목만 포함
         if rating > 2:
             records.append(rec)
     if not records:
@@ -67,13 +69,15 @@ def create_slack_message(recommendations):
             menu = rec["대표 메뉴"]
             rating = rec["평점"]
             price = rec["가격대"]
+            # "소요시간(거리)" 열을 읽어옴
+            duration = rec["소요시간(거리)"]
             memo = rec["메모"]
         except KeyError as e:
             print(f"CSV 행에 필요한 키가 없습니다: {e}")
             continue
 
         message += f":fork_and_knife: *{store_name}* ({store_type})\n"
-        message += f"대표 메뉴: {menu} | 평점: {rating} | 가격대: {price}\n"
+        message += f"대표 메뉴: {menu} | 평점: {rating} | 가격대: {price} | 소요시간(거리): {duration}분\n"
         if memo:
             message += f"메모: {memo}\n"
         message += "\n"
@@ -81,7 +85,7 @@ def create_slack_message(recommendations):
     return message
 
 def send_slack_message():
-    # 평일(월~금)인 경우에만 실행
+    # 평일(월~금)인 경우에만 실행 (토요일, 일요일 제외)
     if datetime.datetime.today().weekday() >= 5:
         print("오늘은 주말입니다. 메시지를 전송하지 않습니다.")
         return
