@@ -11,7 +11,6 @@ SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL", "#lunch-recommendations")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
 
 # --- Google 스프레드시트 설정 ---
-# "웹에 게시"한 CSV 링크 (예: https://docs.google.com/spreadsheets/d/e/XXXXXXXXXXXX/pub?output=csv)
 SPREADSHEET_CSV_URL = os.environ.get("SPREADSHEET_CSV_URL")
 
 def get_restaurant_recommendations():
@@ -46,9 +45,15 @@ def get_restaurant_recommendations():
 
 def create_slack_message(recommendations):
     """
-    추천 맛집 목록과 유쾌한 멘트를 포함한 Slack 메시지 생성
+    추천 맛집 목록과 유쾌한 멘트를 포함한 Slack 메시지 생성.
+    메시지 헤더에 오늘의 날짜(예: 2025년 1월 1일(월))도 함께 표시합니다.
     """
-    message = "*오늘의 점심 추천 목록:*\n"
+    today = datetime.datetime.now()
+    # Python의 weekday()는 월요일이 0, 일요일이 6입니다.
+    weekday_map = {0:"월", 1:"화", 2:"수", 3:"목", 4:"금", 5:"토", 6:"일"}
+    formatted_date = f"{today.year}년 {today.month}월 {today.day}일({weekday_map[today.weekday()]})"
+    
+    message = f"*오늘의 점심 추천 목록 ({formatted_date}):*\n"
     for rec in recommendations:
         try:
             store_name = rec["가게 이름"]
