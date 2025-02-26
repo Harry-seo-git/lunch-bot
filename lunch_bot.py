@@ -66,7 +66,7 @@ def create_slack_message(recommendations):
     weekday_map = {0:"월", 1:"화", 2:"수", 3:"목", 4:"금", 5:"토", 6:"일"}
     formatted_date = f"{today.year}년 {today.month}월 {today.day}일({weekday_map[today.weekday()]})"
     
-    message = f"*오늘의 점심 추천 목록 ({formatted_date}):*\n"
+    message = f"*오늘의 점심 식당 추천 목록 ({formatted_date}):*\n"
     for rec in recommendations:
         try:
             store_name = rec["가게 이름"]
