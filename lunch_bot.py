@@ -3,30 +3,23 @@ import csv
 import requests
 import random
 import datetime
-import schedule
-import time
-import threading
 from slack_sdk import WebClient
-from slack_bolt import App
-from slack_bolt.adapter.flask import SlackRequestHandler
-from flask import Flask, request
 
-# 환경변수 (GitHub Secrets로부터 주입)
+# --- Slack 설정 ---
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
-SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET")
-# 자동 전송할 채널 (특정 채널 ID; 없으면 봇이 가입한 모든 채널)
-AUTO_CHANNEL = os.environ.get("SLACK_CHANNEL")
-# 스프레드시트를 '웹에 게시'하여 얻은 CSV URL
-SPREADSHEET_CSV_URL = os.environ.get("SPREADSHEET_CSV_URL")
-
-# Slack 클라이언트 및 Bolt 앱 생성
+# Slack 채널 ID (예: "#lunch-recommendations" 또는 채널 ID)
+SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
-bolt_app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
+
+# --- Google 스프레드시트 설정 ---
+# SPREADSHEET_CSV_URL: 스프레드시트를 '웹에 게시'하여 얻은 CSV URL
+SPREADSHEET_CSV_URL = os.environ.get("SPREADSHEET_CSV_URL")
 
 def get_restaurant_recommendations():
     """
-    CSV 링크에서 데이터를 가져와 파싱한 후,
-    평점이 2 초과인 항목만 필터링하여 무작위로 5~6곳 추천합니다.
+    공개된 CSV 링크에서 데이터를 가져와 파싱한 후,
+    평점이 2 초과인 항목만 필터링하고,
+    무작위로 5~6곳을 추천합니다.
     
     CSV 파일은 아래 열을 포함해야 합니다:
       - 가게 이름
@@ -45,6 +38,7 @@ def get_restaurant_recommendations():
     reader = csv.DictReader(content.splitlines())
     records = []
     for row in reader:
+        # 키와 값의 불필요한 공백 제거
         rec = {k.strip(): v.strip() for k, v in row.items()}
         try:
             rating = float(rec.get("평점", "0"))
@@ -68,7 +62,7 @@ def create_slack_message(recommendations):
     formatted_date = f"{today.year}년 {today.month}월 {today.day}일({weekday_map[today.weekday()]})"
     
     message = f"*오늘의 점심 추천 목록 ({formatted_date}):*\n"
-    for rec in recommendations:
+    for rec in get_restaurant_recommendations():
         try:
             store_name = rec["가게 이름"]
             store_type = rec["종류"]
@@ -89,64 +83,18 @@ def create_slack_message(recommendations):
     message += "점심시간이다! 오늘도 맛있는 한 끼로 기분 UP! :smile:"
     return message
 
-def send_slack_message(channel):
+def send_slack_message():
     recommendations = get_restaurant_recommendations()
     if not recommendations:
         print("추천할 맛집 데이터가 없습니다.")
         return
     message = create_slack_message(recommendations)
     try:
-        slack_client.chat_postMessage(channel=channel, text=message)
-        print(f"{datetime.datetime.now()} - 메시지 전송 완료 in {channel}")
+        response = slack_client.chat_postMessage(channel=SLACK_CHANNEL, text=message)
+        print(f"{datetime.datetime.now()} - 메시지 전송 완료: {response['ok']}")
     except Exception as e:
-        print(f"채널 {channel}에 메시지 전송 실패: {e}")
-
-# 자동 스케줄링: 평일 오전 10시 15분에 실행
-def scheduled_job():
-    if datetime.datetime.today().weekday() >= 5:
-        print("오늘은 주말입니다. 자동 메시지를 전송하지 않습니다.")
-        return
-    if AUTO_CHANNEL:
-        send_slack_message(AUTO_CHANNEL)
-    else:
-        conv_response = slack_client.conversations_list(types="public_channel,private_channel")
-        channels = conv_response.get("channels", [])
-        for channel in channels:
-            if channel.get("is_member", False):
-                send_slack_message(channel["id"])
-
-def run_schedule():
-    schedule.every().monday.at("10:15").do(scheduled_job)
-    schedule.every().tuesday.at("10:15").do(scheduled_job)
-    schedule.every().wednesday.at("10:15").do(scheduled_job)
-    schedule.every().thursday.at("10:15").do(scheduled_job)
-    schedule.every().friday.at("10:15").do(scheduled_job)
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
-
-# 백그라운드 스레드에서 스케줄 실행
-schedule_thread = threading.Thread(target=run_schedule, daemon=True)
-schedule_thread.start()
-
-# Slack Bolt 이벤트 핸들러: "점심폭격기"라는 메시지에도 응답
-@bolt_app.message("점심폭격기")
-def handle_command(message, say):
-    recommendations = get_restaurant_recommendations()
-    if not recommendations:
-        say("추천할 맛집 정보가 없습니다. 스프레드시트 설정을 확인해주세요.")
-        return
-    response_message = create_slack_message(recommendations)
-    say(response_message)
-
-# Flask 앱 설정 (Slack 이벤트 수신)
-flask_app = Flask(__name__)
-handler = SlackRequestHandler(bolt_app)
-
-@flask_app.route("/slack/events", methods=["POST"])
-def slack_events():
-    return handler.handle(request)
+        print(f"메시지 전송 실패: {e}")
 
 if __name__ == "__main__":
-    # Flask 서버 실행 (예: 포트 3000)
-    flask_app.run(port=3000)
+    print("Slack 메시지 전송 시작!")
+    send_slack_message()
