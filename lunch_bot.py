@@ -15,7 +15,9 @@ SPREADSHEET_CSV_URL = os.environ.get("SPREADSHEET_CSV_URL")
 def get_restaurant_recommendations():
     """
     공개된 CSV 링크에서 데이터를 가져와 파싱한 후,
-    맛집 리스트 중 무작위로 5~6곳을 추천합니다.
+    맛집 리스트 중 평점이 2 초과인 항목만 필터링하고,
+    무작위로 5~6곳을 추천합니다.
+    
     CSV 파일은 다음 열을 포함해야 합니다:
       - 가게 이름
       - 종류
@@ -33,10 +35,16 @@ def get_restaurant_recommendations():
     records = []
     for row in reader:
         # 각 키를 strip() 처리하여 BOM이나 불필요한 공백 제거
-        rec = {k.strip(): v for k, v in row.items()}
-        records.append(rec)
+        rec = {k.strip(): v.strip() for k, v in row.items()}
+        try:
+            rating = float(rec.get("평점", "0"))
+        except ValueError:
+            rating = 0
+        # 평점이 2 초과인 경우에만 포함
+        if rating > 2:
+            records.append(rec)
     if not records:
-        print("CSV 파일에 데이터가 없습니다.")
+        print("추천할 데이터가 없습니다. (평점 2 초과인 항목이 없습니다.)")
         return []
     count = random.choice([5, 6])
     recommendations = random.sample(records, min(len(records), count))
