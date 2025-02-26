@@ -22,10 +22,9 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Lunch Bot Script
+      - name: Run Slack Bot Script
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
           SPREADSHEET_CSV_URL: ${{ secrets.SPREADSHEET_CSV_URL }}
-        run: |
-          python lunch_bot.py
+        run: python lunch_bot.py
