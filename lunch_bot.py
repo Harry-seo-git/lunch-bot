@@ -88,7 +88,7 @@ def create_slack_message(recommendations):
         if map_url:
             message += f"지도: {map_url}\n"
         message += "\n"
-    message += "점심시간이다! 오늘도 맛있는 한 끼로 기분 UP! :smile:"
+    message += "자, 여러분! 이제 점심시간입니다. 오늘의 메뉴는 단순한 식사가 아니라, 감동을 선사할 요리의 예술입니다. 한 입 베어 물면 그 풍미에 감탄할 것입니다. 최고의 점심을 즐기세요! :fire:"
     return message
 
 def send_slack_message():
