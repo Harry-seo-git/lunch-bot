@@ -11,7 +11,7 @@ SLACK_CHANNEL = os.environ.get("SLACK_CHANNEL", "#lunch-recommendations")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
 
 # --- Google 스프레드시트 설정 ---
-SPREADSHEET_CSV_URL = os.environ.get("https://docs.google.com/spreadsheets/d/e/2PACX-1vTFHCjy6I3ZbDXDVkReLSie5cEHFH6GDZ-fbzAkwXRC5dxpCncL0KTqwWBCbDZjnvYQTCgwy8tTc556/pub?output=csv")
+SPREADSHEET_CSV_URL = os.environ.get("SPREADSHEET_CSV_URL")
 
 def get_restaurant_recommendations():
     """
